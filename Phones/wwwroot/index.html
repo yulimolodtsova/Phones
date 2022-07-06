@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Список пользователей</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <h2>Список телефонов</h2>
+    <form name="phoneForm">
+        <input type="hidden" name="id" value="0" />
+        <div class="mb-3">
+            <label class="form-label" for="name">Название:</label>
+            <input class="form-control" name="name" />
+        </div>
+        <div class="mb-3">
+            <label for="age" class="form-label">Цена:</label>
+            <input class="form-control" name="price" />
+        </div>
+        <div class="mb-3">
+            <button type="submit" class="btn btn-sm btn-primary">Сохранить</button>
+            <a id="reset" class="btn btn-sm btn-primary">Сбросить</a>
+        </div>
+    </form>
+    <table class="table table-condensed table-striped table-bordered">
+        <thead><tr><th>Название</th><th>Цена</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+    <script>
+        async function getPhones() {
+            const response = await fetch("/api/phones", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const phones = await response.json();
+                const rows = document.querySelector("tbody");
+                phones.forEach(phone => rows.append(row(phone)));
+            }
+        }
+        async function getPhone(id) {
+            const response = await fetch("/api/phones/" + id, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                const form = document.forms["phoneForm"];
+                form.elements["id"].value = phone.id;
+                form.elements["name"].value = phone.name;
+                form.elements["price"].value = phone.price;
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        async function createPhone(phoneName, phonePrice) {
+
+            const response = await fetch("api/phones", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: phoneName,
+                    price: parseInt(phonePrice, 10)
+                })
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                reset();
+                document.querySelector("tbody").append(row(phone));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        async function editPhone(phoneId, phoneName, phonePrice) {
+            const response = await fetch("api/phones", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: phoneId,
+                    name: phoneName,
+                    price: parseInt(phonePrice, 10)
+                })
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                reset();
+                document.querySelector("tr[data-rowid='" + phone.id + "']").replaceWith(row(phone));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        async function deletePhone(id) {
+            const response = await fetch("/api/phones/" + id, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const phone = await response.json();
+                document.querySelector("tr[data-rowid='" + phone.id + "']").remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+        function reset() {
+            const form = document.forms["phoneForm"];
+            form.reset();
+            form.elements["id"].value = 0;
+        }
+        function row(phone) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", phone.id);
+
+            const nameTd = document.createElement("td");
+            nameTd.append(phone.name);
+            tr.append(nameTd);
+
+            const priceTd = document.createElement("td");
+            priceTd.append(phone.price);
+            tr.append(priceTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("a");
+            editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            editLink.append("Изменить");
+            editLink.addEventListener("click", e => {
+
+                e.preventDefault();
+                getPhone(phone.id);
+            });
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("a");
+            removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            removeLink.append("Удалить");
+            removeLink.addEventListener("click", e => {
+
+                e.preventDefault();
+                deletePhone(phone.id);
+            });
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+        document.getElementById("reset").addEventListener("click", e => {
+
+            e.preventDefault();
+            reset();
+        })
+        document.forms["phoneForm"].addEventListener("submit", e => {
+            e.preventDefault();
+            const form = document.forms["phoneForm"];
+            const id = form.elements["id"].value;
+            const name = form.elements["name"].value;
+            const price = form.elements["price"].value;
+            if (id == 0)
+                createPhone(name, price);
+            else
+                editPhone(id, name, price);
+        });
+        getPhones();
+    </script>
+</body>
+</html>
